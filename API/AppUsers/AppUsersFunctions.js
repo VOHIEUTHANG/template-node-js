@@ -586,6 +586,7 @@ async function retrieveUserTransaction(user) {
 }
 
 function encodeReferCode(appUserId) {
+  console.log(appUserId);
   const encodingTable = [
     "0",
     "1",
@@ -628,10 +629,11 @@ function encodeReferCode(appUserId) {
   let x2 = Math.floor(appUserId / (36 * 36));
   let x3 = Math.floor(appUserId / 36);
   let x4 = Math.floor(appUserId % 36);
-  x1 = encodingTable.at(x1);
-  x2 = encodingTable.at(x2);
-  x3 = encodingTable.at(x3);
-  x4 = encodingTable.at(x4);
+
+  x1 = encodingTable[x1];
+  x2 = encodingTable[x2];
+  x3 = encodingTable[x3];
+  x4 = encodingTable[x4];
   let hashReferCode = `${x1}${x2}${x3}${x4}`;
   return utilitiesFunction.padLeadingZeros(hashReferCode, 4);
 }
@@ -684,6 +686,55 @@ function decodeReferCode(referCode) {
   return appUserId;
 }
 
+async function verifyUserCredentials(username, password) {
+  let hashedPassword = hashPassword(password);
+  // Find an entry from the database that
+  // matches either the email or username
+  let verifyResult = await AppUsersResourceAccess.find({
+    username: username,
+    password: hashedPassword,
+  });
+
+  if (verifyResult && verifyResult.length > 0) {
+    let foundUser = verifyResult[0];
+
+    foundUser = await retrieveUserDetail(foundUser.appUserId);
+
+    return foundUser;
+  } else {
+    return undefined;
+  }
+}
+
+async function lockUser(appUserId) {
+  return new Promise(async (resolve, reject) => {
+    const _foundUser = await AppUsersResourceAccess.find({
+      appUserId,
+    });
+
+    if (_foundUser && _foundUser.length > 0) {
+      let foundUser = _foundUser[0];
+      if (foundUser.active === 0) {
+        console.error(`User locked !`);
+        reject(USER_ERROR.USER_LOCKED);
+      } else if (foundUser.active === 1) {
+        try {
+          foundUser = await AppUsersResourceAccess.updateById(appUserId, {
+            active: 0,
+          });
+          resolve(foundUser);
+        } catch (e) {
+          console.log("🚀 ~ file: AppUsersFunctions.js ~ line 727 ~ e", e);
+        }
+      }
+    } else {
+      console.error(`User not found !`);
+      reject(USER_ERROR.USER_NOT_FOUND);
+    }
+    return;
+  });
+}
+
 module.exports = {
   verifyUniqueUser,
   verifyUserCredentials,
@@ -698,8 +749,8 @@ module.exports = {
   sendEmailToResetPassword,
   sendEmailToVerifyEmail,
   verifyUserSecondaryPassword,
-  // getUnreadNotificationCount,
   retrieveUserTransaction,
   encodeReferCode,
   decodeReferCode,
+  lockUser,
 };

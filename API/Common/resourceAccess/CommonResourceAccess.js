@@ -1,22 +1,26 @@
 /* Copyright (c) 2022 Toriti Tech Team https://t.me/ToritiTech */
 
-'use strict';
-require('dotenv').config();
+"use strict";
+require("dotenv").config();
 
-const Logger = require('../../../utils/logging');
-const { DB } = require('../../../config/database');
+const Logger = require("../../../utils/logging");
+const { DB } = require("../../../config/database");
 
 if (process.env.REDIS_ENABLE) {
-  const cache = require('../../../ThirdParty/Redis/RedisInstance');
+  const cache = require("../../../ThirdParty/Redis/RedisInstance");
   cache.initRedis();
 }
 
 function createOrReplaceView(viewName, viewDefinition) {
-  Logger.info('ResourceAccess', 'createOrReplaceView: ' + viewName);
-  Logger.info('ResourceAccess', viewDefinition.toString());
-  return DB.schema.raw('CREATE OR REPLACE VIEW ?? AS (\n' + viewDefinition + '\n)', [viewName]).then(() => {
-    Logger.info('ResourceAccess', '[DONE]createOrReplaceView: ' + viewName);
-  });
+  Logger.info("ResourceAccess", "createOrReplaceView: " + viewName);
+  Logger.info("ResourceAccess", viewDefinition.toString());
+  return DB.schema
+    .raw("CREATE OR REPLACE VIEW ?? AS (\n" + viewDefinition + "\n)", [
+      viewName,
+    ])
+    .then(() => {
+      Logger.info("ResourceAccess", "[DONE]createOrReplaceView: " + viewName);
+    });
 }
 
 async function insert(tableName, data) {
@@ -30,22 +34,34 @@ async function insert(tableName, data) {
         let id = result[0];
         let dataTable = await find(tableName, undefined, 0, 1);
         let dataCache = dataTable[0];
-        await cache.setWithExpire(`${tableName}_${id.toString()}`, JSON.stringify(dataCache));
+        await cache.setWithExpire(
+          `${tableName}_${id.toString()}`,
+          JSON.stringify(dataCache)
+        );
       }
     }
   } catch (e) {
-    Logger.error('ResourceAccess', `DB INSERT ERROR: ${tableName} : ${JSON.stringify(data)}`);
-    Logger.error('ResourceAccess', e);
+    Logger.error(
+      "ResourceAccess",
+      `DB INSERT ERROR: ${tableName} : ${JSON.stringify(data)}`
+    );
+    Logger.error("ResourceAccess", e);
   }
 
   return result;
 }
 async function sum(tableName, field, filter, order) {
-  let queryBuilder = _makeQueryBuilderByFilter(tableName, filter, undefined, undefined, order);
+  let queryBuilder = _makeQueryBuilderByFilter(
+    tableName,
+    filter,
+    undefined,
+    undefined,
+    order
+  );
 
   return new Promise((resolve, reject) => {
     try {
-      queryBuilder.sum(`${field} as sumResult`).then(records => {
+      queryBuilder.sum(`${field} as sumResult`).then((records) => {
         if (records && records[0].sumResult === null) {
           resolve(undefined);
         } else {
@@ -54,23 +70,31 @@ async function sum(tableName, field, filter, order) {
       });
     } catch (e) {
       Logger.error(
-        'ResourceAccess',
-        `DB SUM ERROR: ${tableName} ${field}: ${JSON.stringify(filter)} - ${skip} - ${limit} ${JSON.stringify(order)}`,
+        "ResourceAccess",
+        `DB SUM ERROR: ${tableName} ${field}: ${JSON.stringify(
+          filter
+        )} - ${skip} - ${limit} ${JSON.stringify(order)}`
       );
-      Logger.error('ResourceAccess', e);
+      Logger.error("ResourceAccess", e);
       reject(undefined);
     }
   });
 }
 
-async function sumAmountDistinctByDate(tableName, sumField, filter, startDate, endDate) {
+async function sumAmountDistinctByDate(
+  tableName,
+  sumField,
+  filter,
+  startDate,
+  endDate
+) {
   let queryBuilder = DB(tableName);
   if (startDate) {
-    queryBuilder.where('createdAt', '>=', startDate);
+    queryBuilder.where("createdAt", ">=", startDate);
   }
 
   if (endDate) {
-    queryBuilder.where('createdAt', '<=', endDate);
+    queryBuilder.where("createdAt", "<=", endDate);
   }
 
   queryBuilder.where(filter);
@@ -80,10 +104,13 @@ async function sumAmountDistinctByDate(tableName, sumField, filter, startDate, e
       queryBuilder
         .sum(`${sumField} as totalSum`)
         .count(`${sumField} as totalCount`)
-        .select('createdDate')
-        .groupBy('createdDate')
-        .then(records => {
-          if (records && (records.length < 1 || records[0].totalCount === null)) {
+        .select("createdDate")
+        .groupBy("createdDate")
+        .then((records) => {
+          if (
+            records &&
+            (records.length < 1 || records[0].totalCount === null)
+          ) {
             resolve(undefined);
           } else {
             resolve(records);
@@ -91,23 +118,32 @@ async function sumAmountDistinctByDate(tableName, sumField, filter, startDate, e
         });
     } catch (e) {
       Logger.error(
-        'ResourceAccess',
-        `DB sumAmountDistinctByDate ERROR: ${tableName} ${distinctFields}: ${JSON.stringify(filter)}`,
+        "ResourceAccess",
+        `DB sumAmountDistinctByDate ERROR: ${tableName} ${distinctFields}: ${JSON.stringify(
+          filter
+        )}`
       );
-      Logger.error('ResourceAccess', e);
+      Logger.error("ResourceAccess", e);
       reject(undefined);
     }
   });
 }
 
-async function sumAmountDistinctByCustomField(tableName, sumField, customField, filter, startDate, endDate) {
+async function sumAmountDistinctByCustomField(
+  tableName,
+  sumField,
+  customField,
+  filter,
+  startDate,
+  endDate
+) {
   let queryBuilder = DB(tableName);
   if (startDate) {
-    queryBuilder.where('createdAt', '>=', startDate);
+    queryBuilder.where("createdAt", ">=", startDate);
   }
 
   if (endDate) {
-    queryBuilder.where('createdAt', '<=', endDate);
+    queryBuilder.where("createdAt", "<=", endDate);
   }
 
   queryBuilder.where({ isDeleted: 0 });
@@ -120,8 +156,11 @@ async function sumAmountDistinctByCustomField(tableName, sumField, customField, 
         .count(`${sumField} as totalCount`)
         .select(`${customField}`)
         .groupBy(`${customField}`)
-        .then(records => {
-          if (records && (records.length < 1 || records[0].totalCount === null)) {
+        .then((records) => {
+          if (
+            records &&
+            (records.length < 1 || records[0].totalCount === null)
+          ) {
             resolve(undefined);
           } else {
             resolve(records);
@@ -129,10 +168,12 @@ async function sumAmountDistinctByCustomField(tableName, sumField, customField, 
         });
     } catch (e) {
       Logger.error(
-        'ResourceAccess',
-        `DB sumAmountDistinctByDate ERROR: ${tableName} ${distinctFields}: ${JSON.stringify(filter)}`,
+        "ResourceAccess",
+        `DB sumAmountDistinctByDate ERROR: ${tableName} ${distinctFields}: ${JSON.stringify(
+          filter
+        )}`
       );
-      Logger.error('ResourceAccess', e);
+      Logger.error("ResourceAccess", e);
       reject(undefined);
     }
   });
@@ -148,12 +189,18 @@ async function updateById(tableName, id, data) {
         let idValue = id[keys[0]];
         let dataUpdate = await DB(tableName).select().where(id);
         await cache.deleteByKey(`${tableName}_${idValue.toString()}`);
-        await cache.setWithExpire(`${tableName}_${idValue.toString()}`, JSON.stringify(dataUpdate[0]));
+        await cache.setWithExpire(
+          `${tableName}_${idValue.toString()}`,
+          JSON.stringify(dataUpdate[0])
+        );
       }
     }
   } catch (e) {
-    Logger.error('ResourceAccess', `DB UPDATEBYID ERROR: ${tableName} : ${id} - ${JSON.stringify(data)}`);
-    Logger.error('ResourceAccess', e);
+    Logger.error(
+      "ResourceAccess",
+      `DB UPDATEBYID ERROR: ${tableName} : ${id} - ${JSON.stringify(data)}`
+    );
+    Logger.error("ResourceAccess", e);
   }
   return result;
 }
@@ -164,8 +211,11 @@ async function updateAll(tableName, data, filter = {}) {
   try {
     result = await DB(tableName).where(filter).update(data);
   } catch (e) {
-    Logger.error('ResourceAccess', `DB UPDATEALL ERROR: ${tableName} : ${filter} - ${JSON.stringify(data)}`);
-    Logger.error('ResourceAccess', e);
+    Logger.error(
+      "ResourceAccess",
+      `DB UPDATEALL ERROR: ${tableName} : ${filter} - ${JSON.stringify(data)}`
+    );
+    Logger.error("ResourceAccess", e);
   }
   return result;
 }
@@ -173,15 +223,28 @@ async function updateAll(tableName, data, filter = {}) {
 async function updateAllById(tableName, primaryKeyField, idList, data) {
   let result = undefined;
   try {
-    result = await DB(tableName).whereIn(`${primaryKeyField}`, idList).update(data);
+    result = await DB(tableName)
+      .whereIn(`${primaryKeyField}`, idList)
+      .update(data);
   } catch (e) {
-    Logger.error('ResourceAccess', `DB updateAllById ERROR: ${tableName} : ${JSON.stringify(data)}`);
-    Logger.error('ResourceAccess', e);
+    Logger.error(
+      "ResourceAccess",
+      `DB updateAllById ERROR: ${tableName} : ${JSON.stringify(data)}`
+    );
+    Logger.error("ResourceAccess", e);
   }
   return result;
 }
 
-function _makeQueryBuilderByFilter(tableName, filter, skip, limit, order, startDate, endDate) {
+function _makeQueryBuilderByFilter(
+  tableName,
+  filter,
+  skip,
+  limit,
+  order,
+  startDate,
+  endDate
+) {
   let queryBuilder = DB(tableName);
   if (filter) {
     queryBuilder.where(filter);
@@ -196,25 +259,36 @@ function _makeQueryBuilderByFilter(tableName, filter, skip, limit, order, startD
   }
 
   if (startDate) {
-    queryBuilder.where('createdAt', '>=', startDate);
+    queryBuilder.where("createdAt", ">=", startDate);
   }
 
   if (endDate) {
-    queryBuilder.where('createdAt', '<=', endDate);
+    queryBuilder.where("createdAt", "<=", endDate);
   }
 
   queryBuilder.where({ isDeleted: 0 });
 
-  if (order && order.key !== '' && order.value !== '' && (order.value === 'desc' || order.value === 'asc')) {
+  if (
+    order &&
+    order.key !== "" &&
+    order.value !== "" &&
+    (order.value === "desc" || order.value === "asc")
+  ) {
     queryBuilder.orderBy(order.key, order.value);
   } else {
-    queryBuilder.orderBy('createdAt', 'desc');
+    queryBuilder.orderBy("createdAt", "desc");
   }
 
   return queryBuilder;
 }
 
-function _makeQueryBuilderByFilterAllDelete(tableName, filter, skip, limit, order) {
+function _makeQueryBuilderByFilterAllDelete(
+  tableName,
+  filter,
+  skip,
+  limit,
+  order
+) {
   let queryBuilder = DB(tableName);
   if (filter) {
     queryBuilder.where(filter);
@@ -228,45 +302,77 @@ function _makeQueryBuilderByFilterAllDelete(tableName, filter, skip, limit, orde
     queryBuilder.offset(skip);
   }
 
-  if (order && order.key !== '' && order.value !== '' && (order.value === 'desc' || order.value === 'asc')) {
+  if (
+    order &&
+    order.key !== "" &&
+    order.value !== "" &&
+    (order.value === "desc" || order.value === "asc")
+  ) {
     queryBuilder.orderBy(order.key, order.value);
   } else {
-    queryBuilder.orderBy('createdAt', 'desc');
+    queryBuilder.orderBy("createdAt", "desc");
   }
 
   return queryBuilder;
 }
-async function find(tableName, filter, skip, limit, order, startDate, endDate, fields) {
-  let queryBuilder = _makeQueryBuilderByFilter(tableName, filter, skip, limit, order, startDate, endDate);
+async function find(
+  tableName,
+  filter,
+  skip,
+  limit,
+  order,
+  startDate,
+  endDate,
+  fields
+) {
+  let queryBuilder = _makeQueryBuilderByFilter(
+    tableName,
+    filter,
+    skip,
+    limit,
+    order,
+    startDate,
+    endDate
+  );
   return new Promise((resolve, reject) => {
     try {
-      queryBuilder.select(fields).then(records => {
+      queryBuilder.select(fields).then((records) => {
         resolve(records);
       });
     } catch (e) {
       Logger.error(
-        'ResourceAccess',
-        `DB FIND ERROR: ${tableName} : ${JSON.stringify(filter)} - ${skip} - ${limit} ${JSON.stringify(order)}`,
+        "ResourceAccess",
+        `DB FIND ERROR: ${tableName} : ${JSON.stringify(
+          filter
+        )} - ${skip} - ${limit} ${JSON.stringify(order)}`
       );
-      Logger.error('ResourceAccess', e);
+      Logger.error("ResourceAccess", e);
       reject(undefined);
     }
   });
 }
 
 async function findAllDelete(tableName, filter, skip, limit, order) {
-  let queryBuilder = _makeQueryBuilderByFilterAllDelete(tableName, filter, skip, limit, order);
+  let queryBuilder = _makeQueryBuilderByFilterAllDelete(
+    tableName,
+    filter,
+    skip,
+    limit,
+    order
+  );
   return new Promise((resolve, reject) => {
     try {
-      queryBuilder.select().then(records => {
+      queryBuilder.select().then((records) => {
         resolve(records);
       });
     } catch (e) {
       Logger.error(
-        'ResourceAccess',
-        `DB FIND ERROR: ${tableName} : ${JSON.stringify(filter)} - ${skip} - ${limit} ${JSON.stringify(order)}`,
+        "ResourceAccess",
+        `DB FIND ERROR: ${tableName} : ${JSON.stringify(
+          filter
+        )} - ${skip} - ${limit} ${JSON.stringify(order)}`
       );
-      Logger.error('ResourceAccess', e);
+      Logger.error("ResourceAccess", e);
       reject(undefined);
     }
   });
@@ -285,7 +391,7 @@ async function findById(tableName, key, id) {
         DB(tableName)
           .select()
           .where(key, id)
-          .then(records => {
+          .then((records) => {
             if (records && records.length > 0) {
               resolve(records[0]);
             } else {
@@ -294,27 +400,38 @@ async function findById(tableName, key, id) {
           });
       }
     } catch (e) {
-      Logger.error('ResourceAccess', `DB FIND ERROR: findById ${tableName} : ${key} - ${id}`);
-      Logger.error('ResourceAccess', e);
+      Logger.error(
+        "ResourceAccess",
+        `DB FIND ERROR: findById ${tableName} : ${key} - ${id}`
+      );
+      Logger.error("ResourceAccess", e);
       reject(undefined);
     }
   });
 }
 
 async function count(tableName, field, filter, order) {
-  let queryBuilder = _makeQueryBuilderByFilter(tableName, filter, undefined, undefined, order);
+  let queryBuilder = _makeQueryBuilderByFilter(
+    tableName,
+    filter,
+    undefined,
+    undefined,
+    order
+  );
 
   return new Promise((resolve, reject) => {
     try {
-      queryBuilder.count(`${field} as count`).then(records => {
+      queryBuilder.count(`${field} as count`).then((records) => {
         resolve(records);
       });
     } catch (e) {
       Logger.error(
-        'ResourceAccess',
-        `DB COUNT ERROR: ${tableName} : ${JSON.stringify(filter)} - ${JSON.stringify(order)}`,
+        "ResourceAccess",
+        `DB COUNT ERROR: ${tableName} : ${JSON.stringify(
+          filter
+        )} - ${JSON.stringify(order)}`
       );
-      Logger.error('ResourceAccess', e);
+      Logger.error("ResourceAccess", e);
       reject(undefined);
     }
   });
@@ -325,8 +442,8 @@ async function deleteById(tableName, id) {
   try {
     result = await DB(tableName).where(id).update({ isDeleted: 1 });
   } catch (e) {
-    Logger.error('ResourceAccess', `DB DELETEBYID ERROR: ${tableName} : ${id}`);
-    Logger.error('ResourceAccess', e);
+    Logger.error("ResourceAccess", `DB DELETEBYID ERROR: ${tableName} : ${id}`);
+    Logger.error("ResourceAccess", e);
   }
   return result;
 }
@@ -335,8 +452,8 @@ async function incrementInt(tableName, key, id, field, amount) {
   try {
     result = await DB(tableName).where(key, id).increment(field, amount);
   } catch (e) {
-    Logger.error('ResourceAccess', `DB INCREMENT ERROR: ${tableName} : ${id}`);
-    Logger.error('ResourceAccess', e);
+    Logger.error("ResourceAccess", `DB INCREMENT ERROR: ${tableName} : ${id}`);
+    Logger.error("ResourceAccess", e);
   }
   return result;
 }
@@ -345,8 +462,8 @@ async function decrementInt(tableName, id, amount, field) {
   try {
     result = await DB(tableName).where(id).decrement(field, amount);
   } catch (e) {
-    Logger.error('ResourceAccess', `DB DECREMENT ERROR: ${tableName} : ${id}`);
-    Logger.error('ResourceAccess', e);
+    Logger.error("ResourceAccess", `DB DECREMENT ERROR: ${tableName} : ${id}`);
+    Logger.error("ResourceAccess", e);
   }
   return result;
 }
@@ -363,8 +480,8 @@ async function incrementFloat(tableName, key, id, field, amount) {
 
     result = await DB(tableName).where(key, id).update(updatedData);
   } catch (e) {
-    Logger.error('ResourceAccess', `DB INCREMENT ERROR: ${tableName} : ${id}`);
-    Logger.error('ResourceAccess', e);
+    Logger.error("ResourceAccess", `DB INCREMENT ERROR: ${tableName} : ${id}`);
+    Logger.error("ResourceAccess", e);
   }
   return result;
 }
@@ -380,8 +497,8 @@ async function decrementFloat(tableName, key, id, field, amount) {
 
     result = await DB(tableName).where(key, id).update(updatedData);
   } catch (e) {
-    Logger.error('ResourceAccess', `DB DECREMENT ERROR: ${tableName} : ${id}`);
-    Logger.error('ResourceAccess', e);
+    Logger.error("ResourceAccess", `DB DECREMENT ERROR: ${tableName} : ${id}`);
+    Logger.error("ResourceAccess", e);
   }
   return result;
 }
