@@ -3,26 +3,23 @@
 /**
  * Created by A on 7/18/17.
  */
-'use strict';
+"use strict";
 
-const crypto = require('crypto');
-const otplib = require('otplib');
-const moment = require('moment');
+const crypto = require("crypto");
+const otplib = require("otplib");
+const moment = require("moment");
 
-const AppUsersResourceAccess = require('./resourceAccess/AppUsersResourceAccess');
-const WalletBalanceUnitView = require('../Wallet/resourceAccess/WalletBalanceUnitView');
-const WalletResource = require('../Wallet/resourceAccess/WalletResourceAccess');
-const utilitiesFunction = require('../ApiUtils/utilFunctions');
+const AppUsersResourceAccess = require("./resourceAccess/AppUsersResourceAccess");
+const utilitiesFunction = require("../ApiUtils/utilFunctions");
 
-const QRCodeFunction = require('../../ThirdParty/QRCode/QRCodeFunctions');
-const TokenFunction = require('../ApiUtils/token');
-const Logger = require('../../utils/logging');
-const EmailClient = require('../../ThirdParty/Email/EmailClient');
+const QRCodeFunction = require("../../ThirdParty/QRCode/QRCodeFunctions");
+const TokenFunction = require("../ApiUtils/token");
+const Logger = require("../../utils/logging");
+const EmailClient = require("../../ThirdParty/Email/EmailClient");
 
-const WALLET_TYPE = require('../Wallet/WalletConstant').WALLET_TYPE;
 /** Gọi ra để sử dụng đối tượng "authenticator" của thằng otplib */
 const { authenticator } = otplib;
-const { USER_TYPE, USER_ERROR } = require('./AppUserConstant');
+const { USER_TYPE, USER_ERROR } = require("./AppUserConstant");
 /** Tạo secret key ứng với từng user để phục vụ việc tạo otp token.
   * Lưu ý: Secret phải được gen bằng lib otplib thì những app như
     Google Authenticator hoặc tương tự mới xử lý chính xác được.
@@ -37,15 +34,21 @@ const generateOTPToken = (username, serviceName, secret) => {
   return authenticator.keyuri(username, serviceName, secret);
 };
 
-async function getUnreadNotificationCount(foundUser) {
-  const CustomerMessageResourceAccess = require('../CustomerMessage/resourceAccess/CustomerMessageResourceAccess');
-  //lay so luong thong bao chua doc cua user
-  let unreadNotifications = await CustomerMessageResourceAccess.count({ customerId: foundUser.appUserId, isRead: 0 });
-  foundUser.unreadNotifications = unreadNotifications[0].count;
-}
+// async function getUnreadNotificationCount(foundUser) {
+//   const CustomerMessageResourceAccess = require("../CustomerMessage/resourceAccess/CustomerMessageResourceAccess");
+//   //lay so luong thong bao chua doc cua user
+//   let unreadNotifications = await CustomerMessageResourceAccess.count({
+//     customerId: foundUser.appUserId,
+//     isRead: 0,
+//   });
+//   foundUser.unreadNotifications = unreadNotifications[0].count;
+// }
 
 function hashPassword(password) {
-  const hashedPassword = crypto.createHmac('sha256', 'ThisIsSecretKey').update(password).digest('hex');
+  const hashedPassword = crypto
+    .createHmac("sha256", "ThisIsSecretKey")
+    .update(password)
+    .digest("hex");
   return hashedPassword;
 }
 
@@ -101,7 +104,7 @@ async function verifyUserSecondaryPassword(username, secondaryPassword) {
 
 async function retrieveUserDetail(appUserId) {
   //get user detial
-  const AppUserView = require('./resourceAccess/AppUserView');
+  const AppUserView = require("./resourceAccess/AppUserView");
   let user = await AppUserView.find({ appUserId: appUserId }, 0, 1);
   if (user && user.length > 0) {
     let foundUser = user[0];
@@ -118,14 +121,15 @@ async function retrieveUserDetail(appUserId) {
       foundUser.token = token;
     }
 
-    //retrive user wallet info
-    let wallets = await WalletBalanceUnitView.find({ appUserId: appUserId });
-    if (wallets && wallets.length > 0) {
-      foundUser.wallets = wallets;
-    }
+    // //retrive user wallet info
+    // let wallets = await WalletBalanceUnitView.find({ appUserId: appUserId });
+    // if (wallets && wallets.length > 0) {
+    //   foundUser.wallets = wallets;
+    // }
 
     //neu la user dai ly thi se co QRCode gioi thieu
-    let referLink = process.env.WEB_HOST_NAME + `/register?refer=${foundUser.referCode}`;
+    let referLink =
+      process.env.WEB_HOST_NAME + `/register?refer=${foundUser.referCode}`;
     const QRCodeImage = await QRCodeFunction.createQRCode(referLink);
     if (QRCodeImage) {
       foundUser.referLink = referLink;
@@ -133,7 +137,7 @@ async function retrieveUserDetail(appUserId) {
     }
 
     //lay so luong thong bao chua doc cua user
-    await getUnreadNotificationCount(foundUser);
+    // await getUnreadNotificationCount(foundUser);
 
     return foundUser;
   }
@@ -144,7 +148,9 @@ async function retrieveUserDetail(appUserId) {
 async function changeUserPassword(userData, newPassword) {
   let newHashPassword = hashPassword(newPassword);
 
-  let result = await AppUsersResourceAccess.updateById(userData.appUserId, { password: newHashPassword });
+  let result = await AppUsersResourceAccess.updateById(userData.appUserId, {
+    password: newHashPassword,
+  });
 
   if (result) {
     return result;
@@ -155,14 +161,16 @@ async function changeUserPassword(userData, newPassword) {
 
 async function changeUserSecondaryPassword(userData, newPassword, oldPassword) {
   let newHashPassword = hashPassword(newPassword);
-  if (oldPassword && oldPassword !== null && oldPassword !== '') {
+  if (oldPassword && oldPassword !== null && oldPassword !== "") {
     let oldPasswordHash = hashPassword(oldPassword);
     if (oldPasswordHash !== userData.secondaryPassword) {
       return undefined;
     }
   }
 
-  let result = await AppUsersResourceAccess.updateById(userData.appUserId, { secondaryPassword: newHashPassword });
+  let result = await AppUsersResourceAccess.updateById(userData.appUserId, {
+    secondaryPassword: newHashPassword,
+  });
 
   if (result) {
     return result;
@@ -173,7 +181,7 @@ async function changeUserSecondaryPassword(userData, newPassword, oldPassword) {
 
 async function generate2FACode(appUserId) {
   // đây là tên ứng dụng của các bạn, nó sẽ được hiển thị trên app Google Authenticator hoặc Authy sau khi bạn quét mã QR
-  const serviceName = process.env.HOST_NAME || 'trainingdemo.makefamousapp.com';
+  const serviceName = process.env.HOST_NAME || "trainingdemo.makefamousapp.com";
 
   let user = await AppUsersResourceAccess.find({ appUserId: appUserId });
 
@@ -181,8 +189,8 @@ async function generate2FACode(appUserId) {
     user = user[0];
 
     // Thực hiện tạo mã OTP
-    let topSecret = '';
-    if (user.twoFACode || (user.twoFACode !== '' && user.twoFACode !== null)) {
+    let topSecret = "";
+    if (user.twoFACode || (user.twoFACode !== "" && user.twoFACode !== null)) {
       topSecret = user.twoFACode;
     } else {
       topSecret = generateUniqueSecret();
@@ -194,7 +202,8 @@ async function generate2FACode(appUserId) {
     if (QRCodeImage) {
       await AppUsersResourceAccess.updateById(appUserId, {
         twoFACode: topSecret,
-        twoFAQR: process.env.HOST_NAME + `/User/get2FACode?appUserId=${appUserId}`,
+        twoFAQR:
+          process.env.HOST_NAME + `/User/get2FACode?appUserId=${appUserId}`,
       });
       return QRCodeImage;
     }
@@ -212,7 +221,9 @@ const verify2FACode = (token, topSecret) => {
 async function createNewUser(userData) {
   return new Promise(async (resolve, reject) => {
     //check existed username
-    let _existedUsers = await AppUsersResourceAccess.find({ username: userData.username });
+    let _existedUsers = await AppUsersResourceAccess.find({
+      username: userData.username,
+    });
     if (_existedUsers && _existedUsers.length > 0) {
       if (_existedUsers[0].active === 0) {
         let userDetail = retrieveUserDetail(_existedUsers.appUserId);
@@ -226,7 +237,9 @@ async function createNewUser(userData) {
 
     //check existed email
     if (userData.email) {
-      _existedUsers = await AppUsersResourceAccess.find({ email: userData.email });
+      _existedUsers = await AppUsersResourceAccess.find({
+        email: userData.email,
+      });
       if (_existedUsers && _existedUsers.length > 0) {
         console.error(`error duplicated user email`);
         reject(USER_ERROR.DUPLICATED_USER_EMAIL);
@@ -236,7 +249,9 @@ async function createNewUser(userData) {
 
     //check existed phoneNumber
     if (userData.phoneNumber) {
-      _existedUsers = await AppUsersResourceAccess.find({ phoneNumber: userData.phoneNumber });
+      _existedUsers = await AppUsersResourceAccess.find({
+        phoneNumber: userData.phoneNumber,
+      });
       if (_existedUsers && _existedUsers.length > 0) {
         console.error(`error duplicated user phone`);
         reject(USER_ERROR.DUPLICATED_USER_PHONE);
@@ -245,7 +260,9 @@ async function createNewUser(userData) {
     }
     //check existed referUserId
     if (userData.referUserId) {
-      const _existedReferUserId = await AppUsersResourceAccess.find({ appUserId: userData.referUserId });
+      const _existedReferUserId = await AppUsersResourceAccess.find({
+        appUserId: userData.referUserId,
+      });
       if (_existedReferUserId.length === 0) {
         console.error(`error refer user not found`);
         reject(USER_ERROR.REFER_USER_NOT_FOUND);
@@ -257,7 +274,11 @@ async function createNewUser(userData) {
 
     //hash password
     userData.password = hashPassword(userData.password);
-    if (userData.userAvatar === null || userData.userAvatar === undefined || userData.userAvatar === '') {
+    if (
+      userData.userAvatar === null ||
+      userData.userAvatar === undefined ||
+      userData.userAvatar === ""
+    ) {
       userData.userAvatar = `https://${process.env.HOST_NAME}/uploads/avatar.png`;
     }
 
@@ -267,8 +288,12 @@ async function createNewUser(userData) {
     }
 
     //check refer user by refer's username
-    if (userData.referUser && userData.referUser.trim() !== '') {
-      let referUser = await AppUsersResourceAccess.find({ username: userData.referUser }, 0, 1);
+    if (userData.referUser && userData.referUser.trim() !== "") {
+      let referUser = await AppUsersResourceAccess.find(
+        { username: userData.referUser },
+        0,
+        1
+      );
       if (referUser && referUser.length > 0) {
         userData.referUserId = referUser[0].appUserId;
         let dataUserF = await _CheckUserF(userData.referUserId);
@@ -297,8 +322,12 @@ async function createNewUser(userData) {
     }
 
     //check refer user by refer's username
-    if (userData.referCode && userData.referCode.trim() !== '') {
-      let referUser = await AppUsersResourceAccess.find({ referCode: userData.referCode }, 0, 1);
+    if (userData.referCode && userData.referCode.trim() !== "") {
+      let referUser = await AppUsersResourceAccess.find(
+        { referCode: userData.referCode },
+        0,
+        1
+      );
       if (referUser && referUser.length > 0) {
         userData.referUserId = referUser[0].appUserId;
         userData.referUser = referUser[0].username;
@@ -329,7 +358,7 @@ async function createNewUser(userData) {
     //create new user
     let addResult = await AppUsersResourceAccess.insert(userData);
     if (addResult === undefined) {
-      Logger.info('can not insert user ' + JSON.stringify(userData));
+      Logger.info("can not insert user " + JSON.stringify(userData));
       reject(USER_ERROR.DUPLICATED_USER);
     } else {
       let newUserId = addResult[0];
@@ -337,7 +366,9 @@ async function createNewUser(userData) {
 
       let referCode = encodeReferCode(newUserId);
       // let appUserId = decodeReferCode(referCode);
-      await AppUsersResourceAccess.updateById(newUserId, { referCode: referCode });
+      await AppUsersResourceAccess.updateById(newUserId, {
+        referCode: referCode,
+      });
       let userDetail = retrieveUserDetail(newUserId);
       resolve(userDetail);
     }
@@ -346,16 +377,16 @@ async function createNewUser(userData) {
 }
 async function sendEmailToResetPassword(user, userToken, email) {
   let link = `${process.env.LINK_WEB_SITE}/resetPassword?token=${userToken}`;
-  let userType = '';
+  let userType = "";
   if (user.userType === USER_TYPE.PERSONAL) {
-    userType = 'Cá nhân';
+    userType = "Cá nhân";
   } else {
-    userType = 'Môi giới';
+    userType = "Môi giới";
   }
   let emailResult = await EmailClient.sendEmail(
     email,
     `${process.env.SMTP_EMAIL} - Thông Báo Thay Đổi Mật Khẩu`,
-    'ĐẶT LẠI MẬT KHẨU CỦA BẠN',
+    "ĐẶT LẠI MẬT KHẨU CỦA BẠN",
     `<div style="width: 100%; font-family: Arial, Helvetica, sans-serif;">
       <div style="display: flex; width: 100%; align-items: center; justify-content: center; justify-items: center;">
           <div style="width: 70%;">
@@ -371,23 +402,23 @@ async function sendEmailToResetPassword(user, userToken, email) {
           </div>
       </div>
     </div>`,
-    undefined,
+    undefined
   );
   return emailResult;
 }
 
 async function sendEmailToVerifyEmail(user, userToken, email) {
   let link = `${process.env.LINK_WEB_SITE}/verifyEmail?token=${userToken}`;
-  let userType = '';
+  let userType = "";
   if (user.userType === USER_TYPE.PERSONAL) {
-    userType = 'Cá nhân';
+    userType = "Cá nhân";
   } else {
-    userType = 'Môi giới';
+    userType = "Môi giới";
   }
   let emailResult = await EmailClient.sendEmail(
     email,
     `${process.env.SMTP_EMAIL} - Xác Thực Email Của Bạn`,
-    'XÁC THỰC EMAIL CỦA BẠN',
+    "XÁC THỰC EMAIL CỦA BẠN",
     `<div style="width: 100%; font-family: Arial, Helvetica, sans-serif;">
       <div style="display: flex; width: 100%; align-items: center; justify-content: center; justify-items: center;">
           <div style="width: 70%;">
@@ -402,7 +433,7 @@ async function sendEmailToVerifyEmail(user, userToken, email) {
               <div>Ban quản trị</div>
           </div>
       </div>
-    </div>`,
+    </div>`
   );
 
   return emailResult;
@@ -424,7 +455,7 @@ async function _checkIdUser(referUserId, resultArr) {
 }
 
 async function _calculateTodayUserTransaction(user) {
-  let today = moment().startOf('day').format();
+  let today = moment().startOf("day").format();
 
   return await _calculateUserTransaction(user, today);
 }
@@ -439,10 +470,12 @@ async function _calculateUserTransaction(user, startDate, endDate) {
     totalLose: 0,
     totalBet: 0,
   };
-  const DepositResource = require('../PaymentDepositTransaction/resourceAccess/PaymentDepositTransactionResourceAccess');
-  const { IS_USER_DEPOSIT } = require('../PaymentDepositTransaction/PaymentDepositTransactionConstant');
+  const DepositResource = require("../PaymentDepositTransaction/resourceAccess/PaymentDepositTransactionResourceAccess");
+  const {
+    IS_USER_DEPOSIT,
+  } = require("../PaymentDepositTransaction/PaymentDepositTransactionConstant");
   let totalDeposit = await DepositResource.customSum(
-    'paymentAmount',
+    "paymentAmount",
     {
       appUserId: user.appUserId,
       isUserDeposit: IS_USER_DEPOSIT.COMPLETED,
@@ -450,16 +483,22 @@ async function _calculateUserTransaction(user, startDate, endDate) {
     undefined,
     undefined,
     startDate,
-    endDate,
+    endDate
   );
-  if (totalDeposit && totalDeposit.length > 0 && totalDeposit[0].sumResult !== null) {
+  if (
+    totalDeposit &&
+    totalDeposit.length > 0 &&
+    totalDeposit[0].sumResult !== null
+  ) {
     outputResult.totalDeposit = totalDeposit[0].sumResult;
   }
 
-  const WithdrawResource = require('../PaymentWithdrawTransaction/resourceAccess/PaymentWithdrawTransactionResourceAccess');
-  const { WITHDRAW_TRX_STATUS } = require('../PaymentWithdrawTransaction/PaymentWithdrawTransactionConstant');
+  const WithdrawResource = require("../PaymentWithdrawTransaction/resourceAccess/PaymentWithdrawTransactionResourceAccess");
+  const {
+    WITHDRAW_TRX_STATUS,
+  } = require("../PaymentWithdrawTransaction/PaymentWithdrawTransactionConstant");
   let totalWithdraw = await WithdrawResource.customSum(
-    'paymentAmount',
+    "paymentAmount",
     {
       appUserId: user.appUserId,
       PaymentStatus: WITHDRAW_TRX_STATUS.COMPLETED,
@@ -467,31 +506,45 @@ async function _calculateUserTransaction(user, startDate, endDate) {
     undefined,
     undefined,
     startDate,
-    endDate,
+    endDate
   );
 
-  if (totalWithdraw && totalWithdraw.length > 0 && totalWithdraw[0].sumResult !== null) {
+  if (
+    totalWithdraw &&
+    totalWithdraw.length > 0 &&
+    totalWithdraw[0].sumResult !== null
+  ) {
     outputResult.totalWithdraw = totalWithdraw[0].sumResult;
   }
 
-  const StatisticalFunctions = require('../Statistical/StatisticalFunctions');
-  outputResult.totalReWard = await StatisticalFunctions.totalRewardBalanceByUserId(user.appUserId);
-  outputResult.totalPlaceOrder = await StatisticalFunctions.sumTotalUserPlaceOrder({
-    appUserId: user.appUserId,
-    orderStatus: 'Completed',
-  });
+  const StatisticalFunctions = require("../Statistical/StatisticalFunctions");
+  outputResult.totalReWard =
+    await StatisticalFunctions.totalRewardBalanceByUserId(user.appUserId);
+  outputResult.totalPlaceOrder =
+    await StatisticalFunctions.sumTotalUserPlaceOrder({
+      appUserId: user.appUserId,
+      orderStatus: "Completed",
+    });
 
-  const BetRecordResourceAccess = require('../BetRecords/resourceAccess/BetRecordsResourceAccess');
-  let totalWin = await BetRecordResourceAccess.sumaryWinLoseAmount(startDate, endDate, {
-    appUserId: user.appUserId,
-  });
+  const BetRecordResourceAccess = require("../BetRecords/resourceAccess/BetRecordsResourceAccess");
+  let totalWin = await BetRecordResourceAccess.sumaryWinLoseAmount(
+    startDate,
+    endDate,
+    {
+      appUserId: user.appUserId,
+    }
+  );
   if (totalWin && totalWin.length > 0 && totalWin[0].sumResult !== null) {
     outputResult.totalWin = totalWin[0].sumResult;
   }
 
-  let totalBet = await BetRecordResourceAccess.sumaryPointAmount(startDate, endDate, {
-    appUserId: user.appUserId,
-  });
+  let totalBet = await BetRecordResourceAccess.sumaryPointAmount(
+    startDate,
+    endDate,
+    {
+      appUserId: user.appUserId,
+    }
+  );
   if (totalBet && totalBet.length > 0 && totalBet[0].sumResult !== null) {
     outputResult.totalBet = totalBet[0].sumResult;
   }
@@ -534,42 +587,42 @@ async function retrieveUserTransaction(user) {
 
 function encodeReferCode(appUserId) {
   const encodingTable = [
-    '0',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
-    'G',
-    'H',
-    'I',
-    'J',
-    'K',
-    'L',
-    'M',
-    'N',
-    'O',
-    'P',
-    'Q',
-    'R',
-    'S',
-    'T',
-    'U',
-    'V',
-    'W',
-    'X',
-    'Y',
-    'Z',
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
   ];
   let x1 = Math.floor(appUserId / (36 * 36 * 36));
   let x2 = Math.floor(appUserId / (36 * 36));
@@ -585,42 +638,42 @@ function encodeReferCode(appUserId) {
 
 function decodeReferCode(referCode) {
   const decodingTable = [
-    '0',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
-    'G',
-    'H',
-    'I',
-    'J',
-    'K',
-    'L',
-    'M',
-    'N',
-    'O',
-    'P',
-    'Q',
-    'R',
-    'S',
-    'T',
-    'U',
-    'V',
-    'W',
-    'X',
-    'Y',
-    'Z',
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
   ];
 
   let y1 = decodingTable.indexOf(referCode.charAt(0));
@@ -645,7 +698,7 @@ module.exports = {
   sendEmailToResetPassword,
   sendEmailToVerifyEmail,
   verifyUserSecondaryPassword,
-  getUnreadNotificationCount,
+  // getUnreadNotificationCount,
   retrieveUserTransaction,
   encodeReferCode,
   decodeReferCode,

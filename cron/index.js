@@ -1,24 +1,27 @@
 /**
  * Created by A on 7/18/17.
  */
-'use strict';
+"use strict";
 
-const { CronInstance, executeJob } = require("../ThirdParty/Cronjob/CronInstance");
-const Logger = require('../utils/logging');
+const {
+  CronInstance,
+  executeJob,
+} = require("../ThirdParty/Cronjob/CronInstance");
 
-const CustomerRecordJob = require('../API/CustomerRecord/cronjob/StationsRecordAutoCheck');
-const CustomerMessageJob = require('../API/CustomerMessage/cronjob/StationsMessageAutoSend');
+const Logger = require("../utils/logging");
+
+// const CustomerMessageJob = require("../API/CustomerMessage/cronjob/StationsMessageAutoSend");
 
 async function startSchedule() {
   Logger.info("startSchedule ", new Date());
 
   //do not run schedule on DEV environments
-  if (process.env.NODE_ENV === 'dev') {
+  if (process.env.NODE_ENV === "dev") {
     return;
   }
 
   //every 30 seconds
-  setInterval(CustomerMessageJob.autoSendMessageForCustomer, 30 * 1000);
+  // setInterval(CustomerMessageJob.autoSendMessageForCustomer, 30 * 1000);
 
   //every 30 seconds
   // setInterval(CustomerRecordJob.autoUpdateProcessForStation, 30 * 1000);
