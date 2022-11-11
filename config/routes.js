@@ -13,6 +13,7 @@ var APIs = [
     config: AppUsers.registerUser,
   },
   { method: "POST", path: "/AppUsers/loginUser", config: AppUsers.loginUser },
+  { method: "POST", path: "/AppUsers/lockUser", config: AppUsers.lockUser },
 ];
 
 module.exports = APIs;

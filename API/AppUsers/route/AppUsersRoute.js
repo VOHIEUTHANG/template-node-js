@@ -59,4 +59,20 @@ module.exports = {
       Response(req, res, "registerUser");
     },
   },
+  lockUser: {
+    tags: ["api", `${moduleName}`],
+    description: `lock ${moduleName}`,
+    validate: {
+      payload: Joi.object({
+        appUserId: Joi.number().integer().min(0).required(),
+      }),
+    },
+    handler: function (req, res) {
+      if (SystemStatus.all === false) {
+        res("maintain").code(500);
+        return;
+      }
+      Response(req, res, "lockUser");
+    },
+  },
 };

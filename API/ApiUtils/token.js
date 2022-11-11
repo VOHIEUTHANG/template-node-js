@@ -3,14 +3,14 @@
 /**
  * Created by A on 7/18/17.
  */
-'use strict';
+"use strict";
 
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const AppConfig = require('../../config/app');
-const Logger = require('../../utils/logging');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const AppConfig = require("../../config/app");
+const Logger = require("../../utils/logging");
 
-function createToken(user, tokenType = 'normalUser') {
+function createToken(user, tokenType = "normalUser") {
   const userData = {
     appUserId: user.appUserId,
     staffId: user.staffId,
@@ -18,18 +18,18 @@ function createToken(user, tokenType = 'normalUser') {
   };
 
   return jwt.sign(userData, AppConfig.jwt.secret, {
-    algorithm: 'HS256',
+    algorithm: "HS256",
     expiresIn: AppConfig.jwt.expiresIn,
   });
 }
 
 function decodeToken(token) {
-  token = token.replace('Bearer ', '');
+  token = token.replace("Bearer ", "");
   var decoded = undefined;
   try {
     decoded = jwt.verify(token, AppConfig.jwt.secret);
   } catch (err) {
-    Logger.error('Token', err);
+    Logger.error("Token", err);
   }
   return decoded;
 }

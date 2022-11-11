@@ -97,8 +97,8 @@ async function _registerUser(userData) {
 
       if (newUser) {
         //tao vi cho user
-        const WalletFunction = require("../../Wallet/WalletFunctions");
-        await WalletFunction.createWalletForUser(newUser.appUserId);
+        // const WalletFunction = require("../../Wallet/WalletFunctions");
+        // await WalletFunction.createWalletForUser(newUser.appUserId);
 
         resolve(newUser);
       } else {
@@ -141,12 +141,43 @@ async function _registerUser(userData) {
   });
 }
 async function insert(req) {
-  let userData = req.payload;
+  const userData = req.payload;
   return await _registerUser(userData);
+}
+
+async function lockUser(req) {
+  const { appUserId } = req.payload;
+  console.log(appUserId);
+  return new Promise(async (resolve, reject) => {
+    try {
+      const user = await AppUsersFunctions.lockUser(appUserId);
+      resolve(user);
+    } catch (e) {
+      Logger.error(__filename, e);
+      switch (e) {
+        case USER_ERROR.USER_NOT_FOUND:
+          console.error(
+            `error AppUserManage can not lockUser: ${USER_ERROR.REFER_USER_NOT_FOUND}`
+          );
+          reject(USER_ERROR.USER_NOT_FOUND);
+          break;
+        case USER_ERROR.USER_LOCKED:
+          console.error(
+            `error AppUserManage can not lockUser: ${USER_ERROR.USER_LOCKED}`
+          );
+          reject(USER_ERROR.USER_LOCKED);
+          break;
+        default:
+          console.log("error Unknown !");
+          reject("INVALID ERROR");
+      }
+    }
+  });
 }
 
 module.exports = {
   insert,
   registerUser,
   loginUser,
+  lockUser,
 };
